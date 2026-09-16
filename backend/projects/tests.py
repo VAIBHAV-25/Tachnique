@@ -189,3 +189,17 @@ class TestProjectListPerformance:
         assert response.status_code == 200
         assert len(response.data['projects']) == 5
         assert all(p['taskCount'] == 3 for p in response.data['projects'])
+
+
+@pytest.mark.django_db
+class TestApiShape:
+    def test_task_response_uses_camelcase(self, auth_client, user):
+        project = Project.objects.create(name='P', owner=user)
+        Membership.objects.create(user=user, project=project, role='admin')
+        assignee = User.objects.create_user(email='a@example.com', name='A', password='password123')
+        Task.objects.create(project=project, title='T', assignee=assignee, created_by=user)
+        response = auth_client.get(f'/api/projects/{project.id}')
+        task = response.data['project']['tasks'][0]
+        for key in ('projectId', 'assigneeId', 'createdById', 'createdAt', 'updatedAt'):
+            assert key in task
+        assert task['assigneeId'] == str(assignee.id)
