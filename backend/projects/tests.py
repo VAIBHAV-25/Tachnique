@@ -97,3 +97,37 @@ class TestTasks:
 
         response = client.delete(f'/api/tasks/{task.id}')
         assert response.status_code == 403
+
+
+@pytest.mark.django_db
+class TestTaskSearch:
+    def _setup(self, user):
+        project = Project.objects.create(name='P', owner=user)
+        Membership.objects.create(user=user, project=project, role='admin')
+        Task.objects.create(project=project, title='Draft press release', created_by=user)
+        Task.objects.create(project=project, title='Record demo video', created_by=user)
+        return project
+
+    def test_search_filters_by_title_case_insensitive(self, auth_client, user):
+        project = self._setup(user)
+        response = auth_client.get(f'/api/projects/{project.id}/tasks?q=PRESS')
+        assert response.status_code == 200
+        titles = [t['title'] for t in response.data['tasks']]
+        assert titles == ['Draft press release']
+
+    def test_search_payload_cannot_inject_sql(self, auth_client, user):
+        project = self._setup(user)
+        payload = ("zzz') UNION SELECT id, id, email, password, 'x', NULL::uuid, "
+                   "NULL::uuid, 0, created_at, updated_at FROM users --")
+        response = auth_client.get(f'/api/projects/{project.id}/tasks', {'q': payload})
+        assert response.status_code == 200
+        # treated as a literal search term: matches nothing, leaks nothing
+        assert response.data['tasks'] == []
+
+    def test_search_never_leaks_password_hashes(self, auth_client, user):
+        project = self._setup(user)
+        payload = "' OR '1'='1"
+        response = auth_client.get(f'/api/projects/{project.id}/tasks', {'q': payload})
+        assert response.status_code == 200
+        blob = str(response.data['tasks'])
+        assert 'pbkdf2' not in blob
