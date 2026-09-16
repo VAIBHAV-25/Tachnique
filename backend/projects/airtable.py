@@ -19,7 +19,7 @@ def build_fields(task):
         'Description': task.description or '',
         'Status': task.status,
         'Assignee': task.assignee.name if task.assignee else '',
-        'Position': task.position,
+        'Position': str(task.position),
         'Created At': task.created_at.isoformat(),
     }
 
