@@ -173,3 +173,19 @@ class TestTaskUpdateAuthorization:
         assert response.status_code == 200
         task.refresh_from_db()
         assert task.title == 'updated'
+
+
+@pytest.mark.django_db
+class TestProjectListPerformance:
+    def test_project_list_is_constant_query_count(self, auth_client, user, django_assert_max_num_queries):
+        for i in range(5):
+            p = Project.objects.create(name=f'P{i}', owner=user)
+            Membership.objects.create(user=user, project=p, role='admin')
+            for j in range(3):
+                Task.objects.create(project=p, title=f't{i}-{j}', created_by=user)
+        # no N+1: task counts are annotated, not counted per project
+        with django_assert_max_num_queries(4):
+            response = auth_client.get('/api/projects')
+        assert response.status_code == 200
+        assert len(response.data['projects']) == 5
+        assert all(p['taskCount'] == 3 for p in response.data['projects'])

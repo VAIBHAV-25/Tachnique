@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from django.db.models import Q
+from django.db.models import Q, Count
 from users.serializers import UserSerializer
 from .models import Project, Membership, Task
 from .serializers import ProjectDetailSerializer, TaskSerializer
@@ -24,7 +24,7 @@ class ProjectListCreateView(APIView):
             Membership.objects
             .filter(user=request.user)
             .select_related('project__owner')
-            .prefetch_related('project__tasks')
+            .annotate(task_count=Count('project__tasks'))
             .order_by('-project__created_at')
         )
         projects = []
@@ -36,7 +36,7 @@ class ProjectListCreateView(APIView):
                 'description': p.description,
                 'role': m.role,
                 'owner': UserSerializer(p.owner).data,
-                'taskCount': p.tasks.count(),
+                'taskCount': m.task_count,
                 'createdAt': p.created_at.isoformat(),
             })
         return Response({'projects': projects})
