@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { apiFetch, setSession, type StoredUser } from "@/lib/api-client";
+import { AuthLayout } from "@/components/AuthLayout";
+import { Spinner } from "@/components/ui/Spinner";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -22,73 +24,73 @@ export default function RegisterPage() {
       setSession(data.token, data.user);
       navigate("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "registration failed");
+      setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-6">
-      <div className="w-full max-w-sm bg-surface border border-border rounded-lg p-8">
-        <h1 className="text-2xl font-semibold mb-1">create account</h1>
-        <p className="text-muted text-sm mb-6">start a TaskBoard session</p>
-
-        <form onSubmit={onSubmit} className="space-y-4">
-          <label className="block">
-            <span className="text-sm text-muted">name</span>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              className="mt-1 block w-full rounded-md bg-bg border border-border px-3 py-2 text-sm focus:border-accent focus:outline-none"
-            />
-          </label>
-          <label className="block">
-            <span className="text-sm text-muted">email</span>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="mt-1 block w-full rounded-md bg-bg border border-border px-3 py-2 text-sm focus:border-accent focus:outline-none"
-            />
-          </label>
-          <label className="block">
-            <span className="text-sm text-muted">password (min 8)</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-              className="mt-1 block w-full rounded-md bg-bg border border-border px-3 py-2 text-sm focus:border-accent focus:outline-none"
-            />
-          </label>
-
-          {error && (
-            <p className="text-sm text-red-400" role="alert">
-              {error}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full bg-accent hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium rounded-md py-2"
-          >
-            {submitting ? "creating…" : "create account"}
-          </button>
-        </form>
-
-        <p className="text-xs text-muted mt-6">
-          have an account?{" "}
-          <Link to="/login" className="text-accent hover:underline">
-            sign in
+    <AuthLayout
+      title="Create your account"
+      subtitle="Start organizing work in minutes."
+      footer={
+        <>
+          Already have an account?{" "}
+          <Link to="/login" className="font-semibold text-primary hover:underline">
+            Sign in
           </Link>
-        </p>
-      </div>
-    </main>
+        </>
+      }
+    >
+      <form onSubmit={onSubmit} className="space-y-4">
+        <label className="block">
+          <span className="block text-[13px] font-medium text-ink mb-1.5">Name</span>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            autoComplete="name"
+            className="field"
+          />
+        </label>
+        <label className="block">
+          <span className="block text-[13px] font-medium text-ink mb-1.5">Email</span>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+            className="field"
+          />
+        </label>
+        <label className="block">
+          <span className="block text-[13px] font-medium text-ink mb-1.5">Password</span>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={8}
+            autoComplete="new-password"
+            className="field"
+          />
+          <span className="mt-1.5 block text-[12px] text-faint">At least 8 characters.</span>
+        </label>
+
+        {error && (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
+
+        <button type="submit" disabled={submitting} className="btn-primary w-full">
+          {submitting ? <Spinner /> : null}
+          {submitting ? "Creating…" : "Create account"}
+        </button>
+      </form>
+    </AuthLayout>
   );
 }

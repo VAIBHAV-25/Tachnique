@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { apiFetch, setSession, type StoredUser } from "@/lib/api-client";
+import { AuthLayout } from "@/components/AuthLayout";
+import { Spinner } from "@/components/ui/Spinner";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -21,62 +23,65 @@ export default function LoginPage() {
       setSession(data.token, data.user);
       navigate("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "login failed");
+      setError(err instanceof Error ? err.message : "Login failed");
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-6">
-      <div className="w-full max-w-sm bg-surface border border-border rounded-lg p-8">
-        <h1 className="text-2xl font-semibold mb-1">TaskBoard</h1>
-        <p className="text-muted text-sm mb-6">sign in to continue</p>
-
-        <form onSubmit={onSubmit} className="space-y-4">
-          <label className="block">
-            <span className="text-sm text-muted">email</span>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="mt-1 block w-full rounded-md bg-bg border border-border px-3 py-2 text-sm focus:border-accent focus:outline-none"
-            />
-          </label>
-          <label className="block">
-            <span className="text-sm text-muted">password</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="mt-1 block w-full rounded-md bg-bg border border-border px-3 py-2 text-sm focus:border-accent focus:outline-none"
-            />
-          </label>
-
-          {error && (
-            <p className="text-sm text-red-400" role="alert">
-              {error}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full bg-accent hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium rounded-md py-2"
-          >
-            {submitting ? "signing in…" : "sign in"}
-          </button>
-        </form>
-
-        <p className="text-xs text-muted mt-6">
-          no account?{" "}
-          <Link to="/register" className="text-accent hover:underline">
-            register
+    <AuthLayout
+      title="Welcome back"
+      subtitle="Sign in to your workspace."
+      footer={
+        <>
+          New here?{" "}
+          <Link to="/register" className="font-semibold text-primary hover:underline">
+            Create an account
           </Link>
-        </p>
-      </div>
-    </main>
+        </>
+      }
+    >
+      <form onSubmit={onSubmit} className="space-y-4">
+        <label className="block">
+          <span className="block text-[13px] font-medium text-ink mb-1.5">Email</span>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+            className="field"
+          />
+        </label>
+        <label className="block">
+          <span className="block text-[13px] font-medium text-ink mb-1.5">Password</span>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+            className="field"
+          />
+        </label>
+
+        {error && (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
+
+        <button type="submit" disabled={submitting} className="btn-primary w-full">
+          {submitting ? <Spinner /> : null}
+          {submitting ? "Signing in…" : "Sign in"}
+        </button>
+      </form>
+
+      <p className="mt-5 rounded-lg bg-subtle px-3 py-2.5 text-[12px] text-muted">
+        <span className="font-semibold text-ink">Demo</span> — prefilled with
+        <span className="font-medium text-ink"> meera@taskboard.dev</span> / password123.
+      </p>
+    </AuthLayout>
   );
 }
