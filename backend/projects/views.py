@@ -8,6 +8,7 @@ from users.serializers import UserSerializer
 from .models import Project, Membership, Task, Comment, Activity
 from .serializers import ProjectDetailSerializer, TaskSerializer, CommentSerializer, ActivitySerializer
 from .activity import record_activity, STATUS_LABELS
+from .airtable import get_table, export_tasks, AirtableConfigError
 
 
 def _get_membership(user, project_id):
@@ -257,8 +258,14 @@ class ExportView(APIView):
         if not _can_edit_tasks(membership.role):
             return Response({'error': 'only admins and members can export'}, status=status.HTTP_403_FORBIDDEN)
 
-        tasks = Task.objects.filter(project_id=project_id).select_related('assignee', 'created_by')
-        return Response({'exported': 0, 'tasks': TaskSerializer(tasks, many=True).data})
+        tasks = list(Task.objects.filter(project_id=project_id).select_related('assignee'))
+        try:
+            table = get_table()
+        except AirtableConfigError as exc:
+            return Response({'error': str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        summary = export_tasks(tasks, table)
+        return Response(summary)
 
 
 class CommentListCreateView(APIView):
