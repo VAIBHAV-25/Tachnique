@@ -3,12 +3,16 @@ import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch, getToken } from "@/lib/api-client";
 import { Header } from "@/components/Header";
+import { Avatar } from "@/components/ui/Avatar";
+import { RoleBadge } from "@/components/ui/RoleBadge";
+import { avatarColor } from "@/lib/format";
+import type { Role } from "@/types";
 
 type ProjectSummary = {
   id: string;
   name: string;
   description: string | null;
-  role: "admin" | "member" | "viewer";
+  role: Role;
   owner: { id: string; name: string; email: string };
   taskCount: number;
   createdAt: string;
@@ -26,48 +30,77 @@ export default function DashboardPage() {
     queryFn: () => apiFetch<{ projects: ProjectSummary[] }>("/api/projects"),
   });
 
+  const projects = data?.projects ?? [];
+
   return (
     <div className="min-h-screen">
       <Header />
 
       <main className="max-w-6xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-semibold">your projects</h1>
+        <div className="mb-8 animate-fade-up">
+          <p className="eyebrow mb-2">Workspace</p>
+          <h1 className="text-3xl font-bold">Your projects</h1>
+          {data && (
+            <p className="text-muted text-sm mt-1.5">
+              {projects.length} {projects.length === 1 ? "project" : "projects"} you belong to.
+            </p>
+          )}
         </div>
 
-        {isLoading && <p className="text-muted text-sm">loading…</p>}
+        {isLoading && (
+          <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <li key={i} className="h-40 rounded-xl border border-line bg-surface animate-pulse" />
+            ))}
+          </ul>
+        )}
+
         {error && (
-          <p className="text-sm text-red-400">
-            {error instanceof Error ? error.message : "failed to load projects"}
+          <p className="text-sm text-danger">
+            {error instanceof Error ? error.message : "Failed to load projects"}
           </p>
         )}
 
-        {data && data.projects.length === 0 && (
-          <p className="text-muted text-sm">no projects yet.</p>
+        {data && projects.length === 0 && (
+          <div className="rounded-xl border border-dashed border-line bg-surface p-12 text-center">
+            <p className="font-display text-lg font-semibold">No projects yet</p>
+            <p className="text-sm text-muted mt-1">Projects you're added to will show up here.</p>
+          </div>
         )}
 
-        {data && data.projects.length > 0 && (
-          <ul className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {data.projects.map((p) => (
-              <li
-                key={p.id}
-                className="bg-surface border border-border rounded-lg p-5 hover:border-accent transition"
-              >
-                <Link to={`/projects/${p.id}`} className="block">
-                  <div className="flex items-center justify-between mb-2">
-                    <h2 className="font-medium">{p.name}</h2>
-                    <span className="text-xs uppercase tracking-wide text-muted">
-                      {p.role}
-                    </span>
-                  </div>
-                  {p.description && (
-                    <p className="text-sm text-muted mb-3 line-clamp-2">
-                      {p.description}
+        {projects.length > 0 && (
+          <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {projects.map((p, i) => (
+              <li key={p.id} className="animate-fade-up" style={{ animationDelay: `${i * 55}ms` }}>
+                <Link
+                  to={`/projects/${p.id}`}
+                  className="group flex h-full flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-lift hover:border-transparent"
+                >
+                  <span className="h-1 w-full" style={{ background: avatarColor(p.id) }} />
+                  <div className="flex flex-1 flex-col p-5">
+                    <div className="mb-2 flex items-start justify-between gap-3">
+                      <h2 className="font-display font-semibold leading-tight text-ink transition-colors group-hover:text-primary">
+                        {p.name}
+                      </h2>
+                      <RoleBadge role={p.role} />
+                    </div>
+                    <p className="mb-5 line-clamp-2 flex-1 text-sm text-muted">
+                      {p.description || "No description."}
                     </p>
-                  )}
-                  <p className="text-xs text-muted">
-                    {p.taskCount} {p.taskCount === 1 ? "task" : "tasks"} · owner: {p.owner.name}
-                  </p>
+                    <div className="flex items-center justify-between border-t border-line pt-4">
+                      <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-muted">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
+                          <rect x="3" y="4" width="18" height="16" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
+                          <path d="M8 11l2.2 2.2L16 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        {p.taskCount} {p.taskCount === 1 ? "task" : "tasks"}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <Avatar name={p.owner.name} size={22} />
+                        <span className="text-[13px] text-muted">{p.owner.name}</span>
+                      </span>
+                    </div>
+                  </div>
                 </Link>
               </li>
             ))}
