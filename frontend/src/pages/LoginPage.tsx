@@ -74,12 +74,12 @@ export default function LoginPage() {
 
         <button type="submit" disabled={submitting} className="btn-primary w-full">
           {submitting ? <Spinner /> : null}
-          {submitting ? "Signing in…" : "Sign in"}
+          {submitting ? "Signing in..." : "Sign in"}
         </button>
       </form>
 
       <p className="mt-5 rounded-lg bg-subtle px-3 py-2.5 text-[12px] text-muted">
-        <span className="font-semibold text-ink">Demo</span> — prefilled with
+        <span className="font-semibold text-ink">Demo</span> - prefilled with
         <span className="font-medium text-ink"> meera@taskboard.dev</span> / password123.
       </p>
     </AuthLayout>

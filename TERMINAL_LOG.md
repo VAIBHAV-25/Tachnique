@@ -19,11 +19,11 @@ $ python manage.py seed
 seeding...
 seed complete.
 login with any of these (password: password123):
-  meera@taskboard.dev   — admin on Q3 Launch, Internal Tools
-  arjun@taskboard.dev   — admin on Onboarding, member on Q3 Launch
-  kavya@example.com     — member on Q3 Launch
-  dev@example.com       — viewer on Q3 Launch
-  lina@example.com      — member on Onboarding
+  meera@taskboard.dev   - admin on Q3 Launch, Internal Tools
+  arjun@taskboard.dev   - admin on Onboarding, member on Q3 Launch
+  kavya@example.com     - member on Q3 Launch
+  dev@example.com       - viewer on Q3 Launch
+  lina@example.com      - member on Onboarding
 ```
 
 ## 2. Initial test run (baseline, before fixes)
@@ -34,7 +34,7 @@ $ python -m pytest -q
 15 passed
 ```
 
-## 3. Bug proof — BEFORE fix
+## 3. Bug proof - BEFORE fix
 
 ### 3.1 SQL injection in task search (Critical)
 
@@ -67,13 +67,13 @@ $ curl -s -o /dev/null -w "HTTP %{http_code}\n" -X PATCH "localhost:8000/api/tas
     -d '{"title":"HIJACKED by a non-member"}'
 HTTP 200
 
-# read back as the owner — the task was tampered with
+# read back as the owner - the task was tampered with
 ['HIJACKED by a non-member']
 ```
 
-## 4. Fix proof — AFTER fix
+## 4. Fix proof - AFTER fix
 
-### 4.1 SQL injection — same payload now leaks nothing
+### 4.1 SQL injection - same payload now leaks nothing
 
 ```
 $ curl -s -G "localhost:8000/api/projects/$PID/tasks" -H "Authorization: Bearer $TOKEN" \
@@ -86,7 +86,7 @@ $ curl -s -G "localhost:8000/api/projects/$PID/tasks" -H "Authorization: Bearer 
 ["Draft press release"]
 ```
 
-### 4.2 Task update — non-member is now rejected
+### 4.2 Task update - non-member is now rejected
 
 ```
 $ curl -s -o /dev/null -w "HTTP %{http_code}\n" -X PATCH "localhost:8000/api/tasks/$TASKID" \
@@ -95,7 +95,7 @@ $ curl -s -o /dev/null -w "HTTP %{http_code}\n" -X PATCH "localhost:8000/api/tas
 HTTP 403
 ```
 
-## 5. Part 3c — Airtable export
+## 5. Part 3c - Airtable export
 
 ### 5.1 Authorization + config guards (live)
 
@@ -121,7 +121,7 @@ With `AIRTABLE_API_KEY` / `AIRTABLE_BASE_ID` / `AIRTABLE_TABLE_NAME` set in `.en
 $ curl -s -X POST "localhost:8000/api/projects/$PID/export" -H "Authorization: Bearer $TOKEN"
 {"total": 7, "created": 7, "updated": 0, "failed": 0, "errors": []}
 
-# second run — idempotent (upsert on Task ID, no duplicates)
+# second run - idempotent (upsert on Task ID, no duplicates)
 $ curl -s -X POST "localhost:8000/api/projects/$PID/export" -H "Authorization: Bearer $TOKEN"
 {"total": 7, "created": 0, "updated": 7, "failed": 0, "errors": []}
 ```
@@ -130,7 +130,7 @@ Airtable base after the export: see the screenshot / share link in `RECORDING.md
 The retry/skip/partial-failure behaviour is proven by the unit tests in section 7
 (`projects/test_airtable.py`), which run against the in-memory test double.
 
-## 6. Part 3a / 3b — Comments and Activity (live)
+## 6. Part 3a / 3b - Comments and Activity (live)
 
 ```
 # create a task -> records activity
@@ -141,10 +141,10 @@ $ curl -s -X POST "localhost:8000/api/projects/$PID/tasks" -H "Authorization: Be
 $ curl -s -X PATCH "localhost:8000/api/tasks/$TID" ... -d '{"status":"in_progress"}'    # HTTP 200
 
 # post a comment -> records activity
-$ curl -s -X POST "localhost:8000/api/tasks/$TID/comments" ... -d '{"body":"Kicking this off — will sync with marketing."}'   # HTTP 201
+$ curl -s -X POST "localhost:8000/api/tasks/$TID/comments" ... -d '{"body":"Kicking this off - will sync with marketing."}'   # HTTP 201
 
 # comment thread (chronological)
-  Meera Iyer: Kicking this off — will sync with marketing.
+  Meera Iyer: Kicking this off - will sync with marketing.
 
 # activity feed (newest first)
   Meera Iyer commented on "Wire up release checklist"

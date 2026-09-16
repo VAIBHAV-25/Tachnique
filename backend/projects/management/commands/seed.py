@@ -86,8 +86,8 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS('seed complete.'))
         self.stdout.write('login with any of these (password: password123):')
-        self.stdout.write('  meera@taskboard.dev   — admin on Q3 Launch, Internal Tools')
-        self.stdout.write('  arjun@taskboard.dev   — admin on Onboarding, member on Q3 Launch')
-        self.stdout.write('  kavya@example.com     — member on Q3 Launch')
-        self.stdout.write('  dev@example.com       — viewer on Q3 Launch')
-        self.stdout.write('  lina@example.com      — member on Onboarding')
+        self.stdout.write('  meera@taskboard.dev   - admin on Q3 Launch, Internal Tools')
+        self.stdout.write('  arjun@taskboard.dev   - admin on Onboarding, member on Q3 Launch')
+        self.stdout.write('  kavya@example.com     - member on Q3 Launch')
+        self.stdout.write('  dev@example.com       - viewer on Q3 Launch')
+        self.stdout.write('  lina@example.com      - member on Onboarding')

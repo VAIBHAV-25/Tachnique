@@ -1,6 +1,6 @@
 """In-memory stand-in for a pyairtable Table, used only in unit tests.
 
-It mirrors the one method the exporter depends on — ``batch_upsert`` — including
+It mirrors the one method the exporter depends on - ``batch_upsert`` - including
 its upsert-on-key semantics and its create/update payload shape, and can be told
 to simulate transient and permanent API failures.
 """

@@ -26,7 +26,7 @@ export function ActivityFeed({ projectId }: { projectId: string }) {
       </header>
 
       <div className="p-4">
-        {isLoading && <p className="text-[13px] text-muted">Loading…</p>}
+        {isLoading && <p className="text-[13px] text-muted">Loading...</p>}
         {data && data.length === 0 && (
           <p className="py-4 text-center text-[13px] text-faint">No activity yet.</p>
         )}

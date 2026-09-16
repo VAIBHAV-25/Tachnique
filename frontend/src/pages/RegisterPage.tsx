@@ -88,7 +88,7 @@ export default function RegisterPage() {
 
         <button type="submit" disabled={submitting} className="btn-primary w-full">
           {submitting ? <Spinner /> : null}
-          {submitting ? "Creating…" : "Create account"}
+          {submitting ? "Creating..." : "Create account"}
         </button>
       </form>
     </AuthLayout>

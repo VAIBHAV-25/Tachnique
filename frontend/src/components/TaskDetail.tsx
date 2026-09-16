@@ -107,7 +107,7 @@ export function TaskDetail({ task, projectId, members, canEdit, onClose }: Props
               onChange={(e) => setDescription(e.target.value)}
               disabled={!canEdit}
               rows={3}
-              placeholder={canEdit ? "Add more detail…" : "No description."}
+              placeholder={canEdit ? "Add more detail..." : "No description."}
               className="field resize-none disabled:opacity-70"
             />
           </label>
@@ -157,7 +157,7 @@ export function TaskDetail({ task, projectId, members, canEdit, onClose }: Props
               </button>
               <button onClick={() => save.mutate()} disabled={save.isPending} className="btn-primary">
                 {save.isPending ? <Spinner /> : null}
-                {save.isPending ? "Saving…" : "Save changes"}
+                {save.isPending ? "Saving..." : "Save changes"}
               </button>
             </div>
           )}
@@ -170,7 +170,7 @@ export function TaskDetail({ task, projectId, members, canEdit, onClose }: Props
               </span>
             </div>
 
-            {loadingComments && <p className="text-[13px] text-muted">Loading…</p>}
+            {loadingComments && <p className="text-[13px] text-muted">Loading...</p>}
             {comments && comments.length === 0 && (
               <p className="mb-3 text-[13px] text-faint">No comments yet.</p>
             )}
@@ -212,7 +212,7 @@ export function TaskDetail({ task, projectId, members, canEdit, onClose }: Props
                     }
                   }}
                   rows={1}
-                  placeholder="Write a comment…"
+                  placeholder="Write a comment..."
                   className="field max-h-32 min-h-[42px] flex-1 resize-none"
                 />
                 <button type="submit" disabled={comment.isPending || !body.trim()} className="btn-primary">

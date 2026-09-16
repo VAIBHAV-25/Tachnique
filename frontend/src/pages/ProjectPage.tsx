@@ -104,7 +104,7 @@ export default function ProjectPage() {
                 <div className="mt-3.5 flex items-center gap-3">
                   <MemberStack members={project.memberships} />
                   <span className="text-[13px] text-muted">
-                    {project.memberships.length} members · owner {project.owner.name}
+                    {project.memberships.length} members, owner {project.owner.name}
                   </span>
                 </div>
               </div>

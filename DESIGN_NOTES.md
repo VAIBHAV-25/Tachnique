@@ -2,7 +2,7 @@
 
 ## Activity feed: does a failed audit write roll back the change?
 
-**Yes — the change and its audit record are written in one `transaction.atomic()`
+**Yes - the change and its audit record are written in one `transaction.atomic()`
 block, so if the activity write fails, the task change (or comment) rolls back
 with it.**
 
@@ -14,11 +14,11 @@ them costs nothing and guarantees the two never diverge. A failing audit write i
 bug we want surfaced loudly (a 500 the client retries), not swallowed. If the audit
 sink were ever moved off the primary database (a queue, an external log service),
 I'd switch to a best-effort/async write so audit-pipeline hiccups can't block core
-task flows — but with a shared transactional store, atomic is the correct default.
+task flows - but with a shared transactional store, atomic is the correct default.
 
 ## Comments are append-only
 
-There is no update or delete route for comments — enforced by *not routing* those
+There is no update or delete route for comments - enforced by *not routing* those
 verbs rather than by a permission check, so the guarantee can't be bypassed. This
 matches the "engagement audit trail" intent: the thread is a permanent record.
 

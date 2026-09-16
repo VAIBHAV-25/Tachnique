@@ -18,7 +18,7 @@ export function ExportButton({ projectId }: { projectId: string }) {
       toast({
         tone: s.failed ? "info" : "success",
         title: "Exported to Airtable",
-        description: `${s.total} ${s.total === 1 ? "task" : "tasks"} · ${parts.join(", ")}.`,
+        description: `${s.total} ${s.total === 1 ? "task" : "tasks"}, ${parts.join(", ")}.`,
       });
       queryClient.invalidateQueries({ queryKey: ["activity", projectId] });
     } catch (e) {
@@ -42,7 +42,7 @@ export function ExportButton({ projectId }: { projectId: string }) {
           <path d="M5 15v3a2 2 0 002 2h10a2 2 0 002-2v-3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
         </svg>
       )}
-      {loading ? "Exporting…" : "Export to Airtable"}
+      {loading ? "Exporting..." : "Export to Airtable"}
     </button>
   );
 }
