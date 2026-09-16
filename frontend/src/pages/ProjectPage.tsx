@@ -1,164 +1,137 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch, getToken } from "@/lib/api-client";
+import { getToken, getStoredUser } from "@/lib/api-client";
+import { getProject, createTask, updateTask } from "@/lib/api";
 import { Header } from "@/components/Header";
 import { StatusColumn } from "@/components/StatusColumn";
 import { TaskDetail } from "@/components/TaskDetail";
-import type { ApiProjectDetail, ApiTask, TaskStatus } from "@/types";
+import { ActivityFeed } from "@/components/ActivityFeed";
+import { ExportButton } from "@/components/ExportButton";
+import { Avatar } from "@/components/ui/Avatar";
+import { RoleBadge } from "@/components/ui/RoleBadge";
+import { useToast } from "@/components/ui/Toast";
+import type { ApiProjectMember, ApiTask, Role, TaskStatus } from "@/types";
 import { STATUS_ORDER } from "@/types";
 
 export default function ProjectPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
-
+  const toast = useToast();
   const [activeTask, setActiveTask] = useState<ApiTask | null>(null);
-  const [newTitle, setNewTitle] = useState("");
-  const [newColumn, setNewColumn] = useState<TaskStatus>("todo");
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!getToken()) navigate("/login", { replace: true });
   }, [navigate]);
 
-  const { data, isLoading, error: queryError } = useQuery({
+  const { data: project, isLoading, error } = useQuery({
     queryKey: ["project", id],
-    queryFn: () => apiFetch<{ project: ApiProjectDetail }>(`/api/projects/${id}`),
+    queryFn: () => getProject(id!),
+    enabled: !!id,
   });
 
-  const createTask = useMutation({
-    mutationFn: (input: { title: string; status: TaskStatus }) =>
-      apiFetch<{ task: ApiTask }>(`/api/projects/${id}/tasks`, {
-        method: "POST",
-        body: JSON.stringify(input),
-      }),
-    onSuccess: () => {
-      setNewTitle("");
-      queryClient.invalidateQueries({ queryKey: ["project", id] });
-    },
-    onError: (err) => setError(err instanceof Error ? err.message : "create failed"),
-  });
+  const me = useMemo(() => getStoredUser(), []);
+  const myRole: Role | null = useMemo(() => {
+    if (!project || !me) return null;
+    return project.memberships.find((m) => m.user.id === me.id)?.role ?? null;
+  }, [project, me]);
+  const canEdit = myRole === "admin" || myRole === "member";
 
-  const project = data?.project;
-  const tasksByStatus: Record<TaskStatus, ApiTask[]> = {
-    todo: [],
-    in_progress: [],
-    review: [],
-    done: [],
+  const tasksByStatus = useMemo(() => {
+    const g: Record<TaskStatus, ApiTask[]> = { todo: [], in_progress: [], review: [], done: [] };
+    project?.tasks.forEach((t) => g[t.status].push(t));
+    return g;
+  }, [project]);
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["project", id] });
+    queryClient.invalidateQueries({ queryKey: ["activity", id] });
   };
-  if (project) {
-    for (const t of project.tasks) {
-      tasksByStatus[t.status].push(t);
-    }
+
+  const create = useMutation({
+    mutationFn: (input: { title: string; status: TaskStatus }) => createTask(id!, input),
+    onSuccess: invalidate,
+    onError: (e) => toast({ tone: "error", title: "Couldn't add task", description: err(e) }),
+  });
+
+  const move = useMutation({
+    mutationFn: ({ taskId, status }: { taskId: string; status: TaskStatus }) =>
+      updateTask(taskId, { status }),
+    onSuccess: invalidate,
+    onError: (e) => toast({ tone: "error", title: "Couldn't move task", description: err(e) }),
+  });
+
+  function onDropTask(taskId: string, status: TaskStatus) {
+    const t = project?.tasks.find((x) => x.id === taskId);
+    if (!t || t.status === status) return;
+    move.mutate({ taskId, status });
   }
 
   return (
     <div className="min-h-screen">
       <Header />
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="mx-auto max-w-7xl px-6 py-8">
         <Link
           to="/dashboard"
-          className="text-sm text-muted hover:text-white"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted transition-colors hover:text-ink"
         >
-          ← all projects
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          All projects
         </Link>
 
-        {isLoading && <p className="text-muted text-sm mt-6">loading…</p>}
-        {queryError && (
-          <p className="text-sm text-red-400 mt-6">
-            {queryError instanceof Error ? queryError.message : "failed to load"}
+        {isLoading && <BoardSkeleton />}
+        {error && (
+          <p className="mt-6 text-sm text-danger">
+            {error instanceof Error ? error.message : "Failed to load project"}
           </p>
         )}
 
         {project && (
           <>
-            <div className="flex items-start justify-between mt-4 mb-8">
-              <div>
-                <h1 className="text-2xl font-semibold">{project.name}</h1>
+            <div className="mb-7 mt-4 flex flex-wrap items-start justify-between gap-4 animate-fade-up">
+              <div className="min-w-0">
+                <div className="flex items-center gap-3">
+                  <h1 className="truncate text-2xl font-bold">{project.name}</h1>
+                  {myRole && <RoleBadge role={myRole} />}
+                </div>
                 {project.description && (
-                  <p className="text-sm text-muted mt-1 max-w-2xl">
-                    {project.description}
-                  </p>
+                  <p className="mt-1.5 max-w-2xl text-sm text-muted">{project.description}</p>
                 )}
-                <p className="text-xs text-muted mt-2">
-                  owner: {project.owner.name} · {project.memberships.length} members
-                </p>
+                <div className="mt-3.5 flex items-center gap-3">
+                  <MemberStack members={project.memberships} />
+                  <span className="text-[13px] text-muted">
+                    {project.memberships.length} members · owner {project.owner.name}
+                  </span>
+                </div>
+              </div>
+              {canEdit && <ExportButton projectId={project.id} />}
+            </div>
+
+            <div className="flex flex-col gap-6 xl:flex-row">
+              <div className="min-w-0 flex-1">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  {STATUS_ORDER.map((s) => (
+                    <StatusColumn
+                      key={s}
+                      status={s}
+                      tasks={tasksByStatus[s]}
+                      canEdit={canEdit}
+                      isAdding={create.isPending}
+                      onTaskClick={setActiveTask}
+                      onDropTask={onDropTask}
+                      onAddTask={(title, status) => create.mutate({ title, status })}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="xl:w-80 xl:shrink-0">
+                <ActivityFeed projectId={project.id} />
               </div>
             </div>
-
-            <section className="bg-surface border border-border rounded-lg p-4 mb-6">
-              <h2 className="text-sm font-medium mb-3">add a task</h2>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (!newTitle.trim()) return;
-                  setError(null);
-                  createTask.mutate({ title: newTitle.trim(), status: newColumn });
-                }}
-                className="flex gap-2"
-              >
-                <input
-                  type="text"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="task title"
-                  className="flex-1 rounded-md bg-bg border border-border px-3 py-2 text-sm focus:border-accent focus:outline-none"
-                />
-                <select
-                  value={newColumn}
-                  onChange={(e) => setNewColumn(e.target.value as TaskStatus)}
-                  className="rounded-md bg-bg border border-border px-3 py-2 text-sm focus:border-accent focus:outline-none"
-                >
-                  {STATUS_ORDER.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="submit"
-                  disabled={createTask.isPending}
-                  className="bg-accent hover:bg-indigo-500 text-white text-sm font-medium rounded-md px-4 disabled:opacity-50"
-                >
-                  add
-                </button>
-              </form>
-              {error && (
-                <p className="text-sm text-red-400 mt-2" role="alert">
-                  {error}
-                </p>
-              )}
-            </section>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {STATUS_ORDER.map((s) => (
-                <StatusColumn
-                  key={s}
-                  status={s}
-                  tasks={tasksByStatus[s]}
-                  onTaskClick={setActiveTask}
-                />
-              ))}
-            </div>
-
-            <section className="mt-10">
-              <h2 className="text-sm font-medium mb-3">members</h2>
-              <ul className="bg-surface border border-border rounded-lg divide-y divide-border">
-                {project.memberships.map((m) => (
-                  <li
-                    key={m.id}
-                    className="px-4 py-3 flex items-center justify-between text-sm"
-                  >
-                    <span>{m.user.name}</span>
-                    <span className="text-xs text-muted">
-                      {m.user.email} · {m.role}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
           </>
         )}
       </main>
@@ -168,9 +141,39 @@ export default function ProjectPage() {
           task={activeTask}
           projectId={id!}
           members={project.memberships}
+          canEdit={canEdit}
           onClose={() => setActiveTask(null)}
         />
       )}
     </div>
   );
+}
+
+function MemberStack({ members }: { members: ApiProjectMember[] }) {
+  const shown = members.slice(0, 5);
+  const extra = members.length - shown.length;
+  return (
+    <div className="flex items-center">
+      <div className="flex -space-x-2">
+        {shown.map((m) => (
+          <Avatar key={m.id} name={m.user.name} size={26} ring />
+        ))}
+      </div>
+      {extra > 0 && <span className="ml-2 text-[12px] font-medium text-muted">+{extra}</span>}
+    </div>
+  );
+}
+
+function BoardSkeleton() {
+  return (
+    <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="h-64 animate-pulse rounded-2xl border border-line bg-subtle/60" />
+      ))}
+    </div>
+  );
+}
+
+function err(e: unknown) {
+  return e instanceof Error ? e.message : "Please try again.";
 }
