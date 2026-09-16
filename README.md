@@ -110,12 +110,17 @@ upserts on `Task ID`, so running it more than once updates rows in place instead
 creating duplicates. Real API calls use `pyairtable`;
 `backend/projects/airtable_mock.py` is the test double used by the unit tests.
 
+## Walkthrough recording
+
+A screen recording of the app and its features:
+
+**Link:** _add your recording URL here_
+
 ## Project docs
 
 - [`REVIEW.md`](REVIEW.md) - code review (top issues + bug proof)
 - [`DESIGN_NOTES.md`](DESIGN_NOTES.md) - key decisions incl. the activity rollback rationale
 - [`TERMINAL_LOG.md`](TERMINAL_LOG.md) - setup, bug/fix proofs, feature demos, test runs
-- [`RECORDING.md`](RECORDING.md) - walkthrough recording
 
 ## Configuration
 
