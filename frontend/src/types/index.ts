@@ -39,6 +39,39 @@ export type ApiProjectDetail = {
   updatedAt: string;
 };
 
+export type ApiComment = {
+  id: string;
+  taskId: string;
+  body: string;
+  author: ApiUser;
+  createdAt: string;
+};
+
+export type ActivityAction =
+  | "task_created"
+  | "task_status_changed"
+  | "task_assignee_changed"
+  | "comment_added";
+
+export type ApiActivity = {
+  id: string;
+  projectId: string;
+  taskId: string | null;
+  actor: ApiUser | null;
+  action: ActivityAction;
+  metadata: Record<string, unknown>;
+  summary: string;
+  createdAt: string;
+};
+
+export type ExportSummary = {
+  total: number;
+  created: number;
+  updated: number;
+  failed: number;
+  errors: { taskId?: string; error: string }[];
+};
+
 export const STATUS_LABELS: Record<TaskStatus, string> = {
   todo: "To do",
   in_progress: "In progress",
@@ -47,3 +80,11 @@ export const STATUS_LABELS: Record<TaskStatus, string> = {
 };
 
 export const STATUS_ORDER: TaskStatus[] = ["todo", "in_progress", "review", "done"];
+
+// Tailwind color token per status, used for column rails and card stripes.
+export const STATUS_COLOR: Record<TaskStatus, string> = {
+  todo: "#64748B",
+  in_progress: "#2E7BF6",
+  review: "#F59E0B",
+  done: "#14A06E",
+};
