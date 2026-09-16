@@ -25,7 +25,7 @@ class MockAirtableTable:
         self._fail_status = fail_status
         self._fail_task_ids = set(fail_task_ids or [])  # always raise a permanent error
 
-    def batch_upsert(self, records, key_fields):
+    def batch_upsert(self, records, key_fields, typecast=False):
         self.calls += 1
         if self._fail_times > 0:
             self._fail_times -= 1

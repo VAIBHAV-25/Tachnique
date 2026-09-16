@@ -69,7 +69,7 @@ def _try_upsert(table, chunk, summary, max_retries, sleep):
     attempt = 0
     while True:
         try:
-            result = table.batch_upsert(chunk, key_fields=[MERGE_KEY])
+            result = table.batch_upsert(chunk, key_fields=[MERGE_KEY], typecast=True)
             summary['created'] += len(result.get('createdRecords', []))
             summary['updated'] += len(result.get('updatedRecords', []))
             return True
