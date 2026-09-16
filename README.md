@@ -1,8 +1,24 @@
 # TaskBoard
 
-A fullstack project-management app — projects, a Kanban task board, team roles, comments, an activity feed, and one-click export of a project's tasks to Airtable.
+A fullstack project-management app — projects, a Kanban task board, team roles,
+an append-only comment thread per task, a project activity feed, and one-click
+export of a project's tasks to Airtable.
 
-**Stack:** React 18 + Vite + TypeScript (frontend) · Django 5 + Django REST Framework + SimpleJWT (backend) · PostgreSQL 16.
+**Stack:** React 18 + Vite + TypeScript (frontend) · Django 5 + Django REST
+Framework + SimpleJWT (backend) · PostgreSQL 16.
+
+## Features
+
+- **Kanban board** — four status columns with drag-to-move, inline task creation,
+  and role-aware editing.
+- **Roles** — `admin` / `member` / `viewer` enforced on every mutation; viewers are
+  read-only.
+- **Comments** — a chronological, append-only thread on each task (members post,
+  viewers read).
+- **Activity feed** — an audit record for every task created, status/assignee
+  change, and comment, scoped to the project and shown newest-first.
+- **Airtable export** — idempotent bulk export of a project's tasks with retry and
+  partial-failure handling.
 
 ## Setup
 
@@ -42,8 +58,8 @@ npm run dev
 ## Tests
 
 ```bash
-cd backend && python -m pytest        # backend
-cd frontend && npm test               # frontend
+cd backend && python -m pytest        # backend  (40 tests)
+cd frontend && npm test               # frontend (9 tests)
 ```
 
 ## Seed accounts
@@ -61,32 +77,51 @@ All passwords are `password123`.
 ## API
 
 ### Auth
-- `POST /api/auth/register` — create account
-- `POST /api/auth/login` — sign in, returns a JWT
-- `GET /api/users/me` — current user
+- `POST /api/auth/register` · `POST /api/auth/login` · `GET /api/users/me`
 
-### Projects
-- `GET /api/projects` — projects you belong to
-- `POST /api/projects` — create (creator becomes admin)
-- `GET /api/projects/:id` — detail with tasks and members
-- `PATCH /api/projects/:id` — update (admin)
-- `DELETE /api/projects/:id` — delete (admin)
+### Projects & tasks
+- `GET/POST /api/projects` · `GET/PATCH/DELETE /api/projects/:id`
+- `GET/POST /api/projects/:id/tasks` (`?q=` searches title/description)
+- `PATCH/DELETE /api/tasks/:id`
 
-### Tasks
-- `GET /api/projects/:id/tasks` — list; `?q=` searches title/description
-- `POST /api/projects/:id/tasks` — create (admin/member)
-- `PATCH /api/tasks/:id` — update (admin/member)
-- `DELETE /api/tasks/:id` — delete (admin/member)
+### Comments (Part 3a)
+- `GET /api/tasks/:id/comments` — chronological thread (project members)
+- `POST /api/tasks/:id/comments` — add a comment (admin/member; append-only)
+
+### Activity (Part 3b)
+- `GET /api/projects/:id/activity` — newest-first audit feed (project members)
+
+### Export (Part 3c)
+- `POST /api/projects/:id/export` — export tasks to Airtable (admin/member)
+
+## Airtable export
+
+Set these in `.env` before exporting:
+
+```
+AIRTABLE_API_KEY=your_personal_access_token
+AIRTABLE_BASE_ID=appXXXXXXXXXXXXXX
+AIRTABLE_TABLE_NAME=Tasks
+```
+
+The target table should have these fields: **Task ID** (the upsert key), **Title**,
+**Description**, **Status**, **Assignee**, **Position**, **Created At**. The export
+upserts on `Task ID`, so running it more than once updates rows in place instead of
+creating duplicates. Real API calls use `pyairtable`;
+`backend/projects/airtable_mock.py` is the test double used by the unit tests.
+
+## Project docs
+
+- [`REVIEW.md`](REVIEW.md) — code review (top issues + bug proof)
+- [`DESIGN_NOTES.md`](DESIGN_NOTES.md) — key decisions incl. the activity rollback rationale
+- [`TERMINAL_LOG.md`](TERMINAL_LOG.md) — setup, bug/fix proofs, feature demos, test runs
+- [`RECORDING.md`](RECORDING.md) — walkthrough recording
 
 ## Configuration
-
-Environment variables (see `.env.example`):
 
 | Variable | Purpose |
 |----------|---------|
 | `POSTGRES_*` | Database connection |
 | `DJANGO_SECRET_KEY` | Django secret key |
 | `DEBUG` | `true` in development only |
-| `AIRTABLE_API_KEY` | Airtable personal access token (export) |
-| `AIRTABLE_BASE_ID` | Target Airtable base id |
-| `AIRTABLE_TABLE_NAME` | Target table name (default `Tasks`) |
+| `AIRTABLE_API_KEY` / `AIRTABLE_BASE_ID` / `AIRTABLE_TABLE_NAME` | Airtable export |
