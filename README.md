@@ -123,6 +123,7 @@ Screen recording of the app and its features (three parts):
 - [`REVIEW.md`](REVIEW.md) - code review (top issues + bug proof)
 - [`DESIGN_NOTES.md`](DESIGN_NOTES.md) - key decisions incl. the activity rollback rationale
 - [`TERMINAL_LOG.md`](TERMINAL_LOG.md) - setup, bug/fix proofs, feature demos, test runs
+- [`RECORDING.md`](RECORDING.md) - walkthrough recording links
 
 ## Configuration
 
