@@ -33,7 +33,10 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   const token = getToken();
   const headers = new Headers(options.headers);
   headers.set("Content-Type", "application/json");
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+  // Public auth endpoints must not carry a (possibly stale) token, or the
+  // server rejects the request before it ever checks credentials.
+  const isAuthEndpoint = path.startsWith("/api/auth/");
+  if (token && !isAuthEndpoint) headers.set("Authorization", `Bearer ${token}`);
 
   const res = await fetch(path, { ...options, headers });
   const text = await res.text();
