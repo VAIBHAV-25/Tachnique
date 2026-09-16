@@ -73,3 +73,29 @@ class Comment(models.Model):
         db_table = 'comments'
         ordering = ['created_at']
         indexes = [models.Index(fields=['task', 'created_at'])]
+
+
+class Activity(models.Model):
+    ACTION_CHOICES = [
+        ('task_created', 'Task created'),
+        ('task_status_changed', 'Task status changed'),
+        ('task_assignee_changed', 'Task assignee changed'),
+        ('comment_added', 'Comment added'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='activities')
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='activities',
+    )
+    action = models.CharField(max_length=32, choices=ACTION_CHOICES)
+    task = models.ForeignKey(
+        Task, on_delete=models.SET_NULL, null=True, blank=True, related_name='activities',
+    )
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'activities'
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['project', '-created_at'])]

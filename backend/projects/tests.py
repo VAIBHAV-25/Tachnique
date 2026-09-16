@@ -1,7 +1,7 @@
 import pytest
 from rest_framework.test import APIClient
 from users.models import User
-from projects.models import Project, Membership, Task, Comment
+from projects.models import Project, Membership, Task, Comment, Activity
 
 
 @pytest.fixture
@@ -261,3 +261,73 @@ class TestComments:
         # there is no comment detail route: edits/deletes are not routable
         assert auth_client.patch(f'/api/comments/{comment.id}', {'body': 'edited'}, format='json').status_code == 404
         assert auth_client.delete(f'/api/comments/{comment.id}').status_code == 404
+
+
+@pytest.mark.django_db
+class TestActivityFeed:
+    def _project(self, owner, member=None):
+        project = Project.objects.create(name='P', owner=owner)
+        Membership.objects.create(user=owner, project=project, role='admin')
+        if member:
+            Membership.objects.create(user=member, project=project, role='member')
+        return project
+
+    def _login(self, client, email='meera@taskboard.dev'):
+        resp = client.post('/api/auth/login', {'email': email, 'password': 'password123'}, format='json')
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {resp.data['token']}")
+
+    def test_task_lifecycle_is_recorded_newest_first(self, auth_client, user):
+        project = self._project(user)
+        create = auth_client.post(f'/api/projects/{project.id}/tasks', {'title': 'Ship it'}, format='json')
+        task_id = create.data['task']['id']
+        auth_client.patch(f'/api/tasks/{task_id}', {'status': 'in_progress'}, format='json')
+        auth_client.post(f'/api/tasks/{task_id}/comments', {'body': 'on it'}, format='json')
+
+        response = auth_client.get(f'/api/projects/{project.id}/activity')
+        assert response.status_code == 200
+        actions = [a['action'] for a in response.data['activities']]
+        assert actions == ['comment_added', 'task_status_changed', 'task_created']
+        moved = response.data['activities'][1]
+        assert moved['summary'] == 'moved "Ship it" from To do to In progress'
+        assert moved['actor']['email'] == 'meera@taskboard.dev'
+
+    def test_assignee_change_is_recorded(self, auth_client, user):
+        project = self._project(user)
+        assignee = User.objects.create_user(email='a@example.com', name='Aria', password='password123')
+        Membership.objects.create(user=assignee, project=project, role='member')
+        create = auth_client.post(f'/api/projects/{project.id}/tasks', {'title': 'T'}, format='json')
+        auth_client.patch(f'/api/tasks/{create.data["task"]["id"]}', {'assigneeId': str(assignee.id)}, format='json')
+        response = auth_client.get(f'/api/projects/{project.id}/activity')
+        latest = response.data['activities'][0]
+        assert latest['action'] == 'task_assignee_changed'
+        assert latest['summary'] == 'assigned "T" to Aria'
+
+    def test_feed_is_scoped_and_member_only(self, client, user):
+        owner = User.objects.create_user(email='owner@example.com', name='Owner', password='password123')
+        mine = self._project(owner, member=user)
+        other = Project.objects.create(name='Other', owner=owner)
+        Membership.objects.create(user=owner, project=other, role='admin')
+        Activity.objects.create(project=other, actor=owner, action='task_created', metadata={'taskTitle': 'secret'})
+
+        self._login(client)
+        # member sees only their project's feed
+        resp = client.get(f'/api/projects/{mine.id}/activity')
+        assert resp.status_code == 200
+        assert resp.data['activities'] == []
+        # non-member is denied
+        assert client.get(f'/api/projects/{other.id}/activity').status_code == 403
+
+    def test_activity_write_failure_rolls_back_the_change(self, auth_client, user, monkeypatch):
+        project = self._project(user)
+        import projects.views as views
+
+        def boom(*args, **kwargs):
+            raise RuntimeError('audit sink down')
+
+        monkeypatch.setattr(views, 'record_activity', boom)
+        auth_client.raise_request_exception = False
+        before = Task.objects.filter(project=project).count()
+        resp = auth_client.post(f'/api/projects/{project.id}/tasks', {'title': 'X'}, format='json')
+        assert resp.status_code == 500
+        # the task creation is rolled back with the failed audit write
+        assert Task.objects.filter(project=project).count() == before

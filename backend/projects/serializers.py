@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from users.serializers import UserSerializer
-from .models import Project, Membership, Task, Comment
+from .models import Project, Membership, Task, Comment, Activity
 
 
 class TaskSerializer(serializers.ModelSerializer):
@@ -48,3 +48,29 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ['id', 'taskId', 'body', 'author', 'createdAt']
+
+
+class ActivitySerializer(serializers.ModelSerializer):
+    actor = UserSerializer(read_only=True)
+    projectId = serializers.CharField(source='project_id', read_only=True)
+    taskId = serializers.CharField(source='task_id', read_only=True, allow_null=True)
+    createdAt = serializers.DateTimeField(source='created_at', read_only=True)
+    summary = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Activity
+        fields = ['id', 'projectId', 'taskId', 'actor', 'action', 'metadata', 'summary', 'createdAt']
+
+    def get_summary(self, obj):
+        m = obj.metadata or {}
+        title = m.get('taskTitle', 'a task')
+        if obj.action == 'task_created':
+            return f'created task "{title}"'
+        if obj.action == 'task_status_changed':
+            return f'moved "{title}" from {m.get("from")} to {m.get("to")}'
+        if obj.action == 'task_assignee_changed':
+            to = m.get('to')
+            return f'assigned "{title}" to {to}' if to else f'unassigned "{title}"'
+        if obj.action == 'comment_added':
+            return f'commented on "{title}"'
+        return obj.action
