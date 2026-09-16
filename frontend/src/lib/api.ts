@@ -8,6 +8,12 @@ import type {
   TaskStatus,
 } from "@/types";
 
+export const createProject = (input: { name: string; description?: string }) =>
+  apiFetch<{ project: { id: string; name: string } }>(`/api/projects`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  }).then((r) => r.project);
+
 export const getProject = (id: string) =>
   apiFetch<{ project: ApiProjectDetail }>(`/api/projects/${id}`).then((r) => r.project);
 

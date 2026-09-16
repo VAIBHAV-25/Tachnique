@@ -1,8 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch, getToken } from "@/lib/api-client";
 import { Header } from "@/components/Header";
+import { NewProjectModal } from "@/components/NewProjectModal";
 import { Avatar } from "@/components/ui/Avatar";
 import { RoleBadge } from "@/components/ui/RoleBadge";
 import { avatarColor } from "@/lib/format";
@@ -20,6 +21,7 @@ type ProjectSummary = {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const [showNew, setShowNew] = useState(false);
 
   useEffect(() => {
     if (!getToken()) navigate("/login", { replace: true });
@@ -37,14 +39,22 @@ export default function DashboardPage() {
       <Header />
 
       <main className="max-w-6xl mx-auto px-6 py-10">
-        <div className="mb-8 animate-fade-up">
-          <p className="eyebrow mb-2">Workspace</p>
-          <h1 className="text-3xl font-bold">Your projects</h1>
-          {data && (
-            <p className="text-muted text-sm mt-1.5">
-              {projects.length} {projects.length === 1 ? "project" : "projects"} you belong to.
-            </p>
-          )}
+        <div className="mb-8 flex items-end justify-between gap-4 animate-fade-up">
+          <div>
+            <p className="eyebrow mb-2">Workspace</p>
+            <h1 className="text-3xl font-bold">Your projects</h1>
+            {data && (
+              <p className="text-muted text-sm mt-1.5">
+                {projects.length} {projects.length === 1 ? "project" : "projects"} you belong to.
+              </p>
+            )}
+          </div>
+          <button onClick={() => setShowNew(true)} className="btn-primary shrink-0">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            New project
+          </button>
         </div>
 
         {isLoading && (
@@ -64,7 +74,13 @@ export default function DashboardPage() {
         {data && projects.length === 0 && (
           <div className="rounded-xl border border-dashed border-line bg-surface p-12 text-center">
             <p className="font-display text-lg font-semibold">No projects yet</p>
-            <p className="text-sm text-muted mt-1">Projects you're added to will show up here.</p>
+            <p className="text-sm text-muted mt-1 mb-5">Create your first project to get started.</p>
+            <button onClick={() => setShowNew(true)} className="btn-primary mx-auto">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+              New project
+            </button>
           </div>
         )}
 
@@ -107,6 +123,8 @@ export default function DashboardPage() {
           </ul>
         )}
       </main>
+
+      {showNew && <NewProjectModal onClose={() => setShowNew(false)} />}
     </div>
   );
 }
