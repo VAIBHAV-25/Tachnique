@@ -1,7 +1,7 @@
 import pytest
 from rest_framework.test import APIClient
 from users.models import User
-from projects.models import Project, Membership, Task
+from projects.models import Project, Membership, Task, Comment
 
 
 @pytest.fixture
@@ -203,3 +203,61 @@ class TestApiShape:
         for key in ('projectId', 'assigneeId', 'createdById', 'createdAt', 'updatedAt'):
             assert key in task
         assert task['assigneeId'] == str(assignee.id)
+
+
+@pytest.mark.django_db
+class TestComments:
+    def _make(self, owner, viewer=None, member=None):
+        project = Project.objects.create(name='P', owner=owner)
+        Membership.objects.create(user=owner, project=project, role='admin')
+        if viewer:
+            Membership.objects.create(user=viewer, project=project, role='viewer')
+        if member:
+            Membership.objects.create(user=member, project=project, role='member')
+        task = Task.objects.create(project=project, title='T', created_by=owner)
+        return project, task
+
+    def _login(self, client, email):
+        resp = client.post('/api/auth/login', {'email': email, 'password': 'password123'}, format='json')
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {resp.data['token']}")
+
+    def test_member_can_post_and_list_chronologically(self, auth_client, user):
+        _, task = self._make(user)
+        auth_client.post(f'/api/tasks/{task.id}/comments', {'body': 'first'}, format='json')
+        auth_client.post(f'/api/tasks/{task.id}/comments', {'body': 'second'}, format='json')
+        response = auth_client.get(f'/api/tasks/{task.id}/comments')
+        assert response.status_code == 200
+        bodies = [c['body'] for c in response.data['comments']]
+        assert bodies == ['first', 'second']
+        assert response.data['comments'][0]['author']['email'] == 'meera@taskboard.dev'
+
+    def test_viewer_can_read_but_not_post(self, client, user):
+        owner = User.objects.create_user(email='owner@example.com', name='Owner', password='password123')
+        _, task = self._make(owner, viewer=user)
+        Comment.objects.create(task=task, author=owner, body='hello')
+        self._login(client, 'meera@taskboard.dev')
+        read = client.get(f'/api/tasks/{task.id}/comments')
+        assert read.status_code == 200
+        assert len(read.data['comments']) == 1
+        posted = client.post(f'/api/tasks/{task.id}/comments', {'body': 'nope'}, format='json')
+        assert posted.status_code == 403
+
+    def test_non_member_cannot_read_or_post(self, client, user):
+        owner = User.objects.create_user(email='owner@example.com', name='Owner', password='password123')
+        _, task = self._make(owner)
+        self._login(client, 'meera@taskboard.dev')
+        assert client.get(f'/api/tasks/{task.id}/comments').status_code == 403
+        assert client.post(f'/api/tasks/{task.id}/comments', {'body': 'x'}, format='json').status_code == 403
+
+    def test_empty_body_rejected(self, auth_client, user):
+        _, task = self._make(user)
+        response = auth_client.post(f'/api/tasks/{task.id}/comments', {'body': '   '}, format='json')
+        assert response.status_code == 400
+
+    def test_comments_are_append_only(self, auth_client, user):
+        _, task = self._make(user)
+        auth_client.post(f'/api/tasks/{task.id}/comments', {'body': 'permanent'}, format='json')
+        comment = Comment.objects.get(task=task)
+        # there is no comment detail route: edits/deletes are not routable
+        assert auth_client.patch(f'/api/comments/{comment.id}', {'body': 'edited'}, format='json').status_code == 404
+        assert auth_client.delete(f'/api/comments/{comment.id}').status_code == 404
