@@ -131,3 +131,45 @@ class TestTaskSearch:
         assert response.status_code == 200
         blob = str(response.data['tasks'])
         assert 'pbkdf2' not in blob
+
+
+@pytest.mark.django_db
+class TestTaskUpdateAuthorization:
+    def _project_with_task(self, owner):
+        project = Project.objects.create(name='P', owner=owner)
+        Membership.objects.create(user=owner, project=project, role='admin')
+        task = Task.objects.create(project=project, title='Original', created_by=owner)
+        return project, task
+
+    def _auth(self, client):
+        resp = client.post('/api/auth/login', {'email': 'meera@taskboard.dev', 'password': 'password123'}, format='json')
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {resp.data['token']}")
+
+    def test_non_member_cannot_update_task(self, client, user):
+        owner = User.objects.create_user(email='owner@example.com', name='Owner', password='password123')
+        _, task = self._project_with_task(owner)
+        self._auth(client)
+        response = client.patch(f'/api/tasks/{task.id}', {'title': 'hijacked'}, format='json')
+        assert response.status_code == 403
+        task.refresh_from_db()
+        assert task.title == 'Original'
+
+    def test_viewer_cannot_update_task(self, client, user):
+        owner = User.objects.create_user(email='owner@example.com', name='Owner', password='password123')
+        project, task = self._project_with_task(owner)
+        Membership.objects.create(user=user, project=project, role='viewer')
+        self._auth(client)
+        response = client.patch(f'/api/tasks/{task.id}', {'title': 'hijacked'}, format='json')
+        assert response.status_code == 403
+        task.refresh_from_db()
+        assert task.title == 'Original'
+
+    def test_member_can_update_task(self, client, user):
+        owner = User.objects.create_user(email='owner@example.com', name='Owner', password='password123')
+        project, task = self._project_with_task(owner)
+        Membership.objects.create(user=user, project=project, role='member')
+        self._auth(client)
+        response = client.patch(f'/api/tasks/{task.id}', {'title': 'updated'}, format='json')
+        assert response.status_code == 200
+        task.refresh_from_db()
+        assert task.title == 'updated'
